@@ -1,17 +1,43 @@
-import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
-
-const API_KEY = "AIzaSyAgKPihiDxQcJmFQUTaARw5YfNRgXbd5Yc"; 
-
-const genAI = new GoogleGenerativeAI(API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
 let frontImageBase64 = null;
 let backImageBase64 = null;
 
 const readFileAsBase64 = (file) => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onload = (e) => {
+            const img = new Image();
+            img.src = e.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Resize image if too large (e.g., max width/height 1024px)
+                const MAX_SIZE = 1024;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_SIZE) {
+                        height *= MAX_SIZE / width;
+                        width = MAX_SIZE;
+                    }
+                } else {
+                    if (height > MAX_SIZE) {
+                        width *= MAX_SIZE / height;
+                        height = MAX_SIZE;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Convert to base64
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.8); // 80% quality
+                resolve(dataUrl.split(',')[1]);
+            };
+            img.onerror = reject;
+        };
         reader.onerror = reject;
         reader.readAsDataURL(file);
     });
@@ -59,43 +85,21 @@ document.getElementById('analyze-btn').addEventListener('click', async () => {
     btn.disabled = true;
 
     try {
-        const prompt = `
-            Analyze the two provided images of an Egyptian National ID card.
-            Extract the following information in Arabic:
-            1. National ID Number (الرقم القومي)
-            2. Name (الاسم)
-            3. Address (العنوان)
-            4. Date of Birth (تاريخ الميلاد)
-            5. Job (المهنة)
-            6. Gender (النوع)
-            7. Religion (الديانة)
-            8. Marital Status (الحالة الاجتماعية)
-            9. Expiry Date (تاريخ الانتهاء)
+        const response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                frontImage: frontImageBase64, 
+                backImage: backImageBase64 
+            })
+        });
 
-            Return ONLY a valid JSON object with these keys:
-            {
-                "national_id": "...",
-                "name": "...",
-                "address": "...",
-                "dob": "...",
-                "job": "...",
-                "gender": "...",
-                "religion": "...",
-                "marital_status": "...",
-                "expiry_date": "..."
-            }
-        `;
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.details || errData.error || 'Server Error');
+        }
 
-        const result = await model.generateContent([
-            prompt,
-            { inlineData: { data: frontImageBase64, mimeType: "image/png" } },
-            { inlineData: { data: backImageBase64, mimeType: "image/png" } }
-        ]);
-
-        const response = await result.response;
-        const text = response.text();
-        const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        const data = JSON.parse(cleanText);
+        const data = await response.json();
 
         const fields = [
             { key: 'national_id', label: 'الرقم القومي' },
@@ -122,7 +126,7 @@ document.getElementById('analyze-btn').addEventListener('click', async () => {
 
     } catch (error) {
         console.error("API Error:", error);
-        errorMsg.textContent = "حدث خطأ أثناء تحليل البيانات. حاول مرة أخرى.";
+        errorMsg.textContent = "حدث خطأ أثناء تحليل البيانات. حاول مرة أخرى. " + error.message;
     } finally {
         loader.style.display = 'none';
         btn.disabled = false;
