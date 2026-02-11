@@ -74,8 +74,7 @@ export default async function handler(req, res) {
       contents,
     });
 
-    // The new SDK returns text differently
-    const text = result.candidates[0].content.parts[0].text;
+    const text = result.text;
     const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
     const data = JSON.parse(cleanText);
 
