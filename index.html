@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>قارئ بطاقة الرقم القومي المصري</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <h1>قارئ بطاقة الرقم القومي</h1>
+
+    <div class="container">
+        <div class="upload-section" id="front-section">
+            <h3>صورة البطاقة الأمامية</h3>
+            <input type="file" id="front-upload" accept="image/*">
+            <label for="front-upload" class="upload-btn">اختر صورة</label>
+            <img id="front-preview" class="preview-img" alt="Front Preview">
+        </div>
+
+        <div class="upload-section" id="back-section">
+            <h3>صورة البطاقة الخلفية</h3>
+            <input type="file" id="back-upload" accept="image/*">
+            <label for="back-upload" class="upload-btn">اختر صورة</label>
+            <img id="back-preview" class="preview-img" alt="Back Preview">
+        </div>
+
+        <button id="analyze-btn">تحليل البيانات</button>
+        
+        <div id="loader" class="loader"></div>
+        <div id="error-msg" class="error"></div>
+
+        <div id="result"></div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
