@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from '@google/genai';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -17,8 +17,8 @@ export default async function handler(req, res) {
       throw new Error("GEMINI_API_KEY environment variable is not set.");
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+    const ai = new GoogleGenAI({ apiKey });
+    const model = 'gemini-3-flash-preview';
 
     const prompt = `
       Analyze the two provided images of an Egyptian National ID card.
@@ -45,16 +45,37 @@ export default async function handler(req, res) {
           "marital_status": "...",
           "expiry_date": "..."
       }
+      Do not include markdown formatting. Just the raw JSON.
     `;
 
-    const result = await model.generateContent([
-      prompt,
-      { inlineData: { data: frontImage, mimeType: "image/jpeg" } },
-      { inlineData: { data: backImage, mimeType: "image/jpeg" } }
-    ]);
+    const contents = [
+      {
+        role: 'user',
+        parts: [
+          { text: prompt },
+          {
+            inlineData: {
+              data: frontImage,
+              mimeType: 'image/jpeg'
+            }
+          },
+          {
+            inlineData: {
+              data: backImage,
+              mimeType: 'image/jpeg'
+            }
+          }
+        ]
+      }
+    ];
 
-    const response = await result.response;
-    const text = response.text();
+    const result = await ai.models.generateContent({
+      model,
+      contents,
+    });
+
+    // The new SDK returns text differently
+    const text = result.candidates[0].content.parts[0].text;
     const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
     const data = JSON.parse(cleanText);
 
